@@ -80,6 +80,10 @@ static const CGFloat JESDefaultProgressLineWidth = 4;
 - (void)setProgressLineWidth:(CGFloat)lineWidth {
 	_progressLineWidth = lineWidth;
 	[[self progressLayer] setLineWidth:_progressLineWidth];
+
+    // Now that the measurements have changed we must update the paths
+    [self drawProgressCircle];
+    [self drawOuterCircle];
     [self setNeedsDisplay:YES];
 }
 
@@ -113,30 +117,26 @@ static const CGFloat JESDefaultProgressLineWidth = 4;
 #pragma mark - Drawing
 
 - (void)drawProgressCircle {
-    if (!self.progressPath) { _progressPath = [NSBezierPath bezierPath]; }
-
+    _progressPath = [NSBezierPath bezierPath];
     [self.progressPath appendBezierPathWithArcWithCenter:[self center]
                                                   radius:[self radius]
                                               startAngle:90
                                                 endAngle:(2.0 * M_PI - M_PI_2) + 90
                                                clockwise:YES];
-
-	self.progressLayer.path = [self.progressPath quartzPath];
-	self.progressLayer.frame = self.bounds;
+    self.progressLayer.path = [self.progressPath quartzPath];
+    self.progressLayer.frame = self.bounds;
 }
 
 - (void)drawOuterCircle {
-    if (!_outerPath) {
-        _outerPath = [NSBezierPath bezierPath];
-        [self.outerPath appendBezierPathWithArcWithCenter:[self center]
-                                                   radius:[self radius] + self.progressLineWidth
-                                               startAngle:0
-                                                 endAngle:(2.0 * M_PI - M_PI_2)
-                                                clockwise:YES];
-        self.outerLayer.path = [self.outerPath quartzPath];
-        self.outerLayer.frame = self.bounds;
-        [self.outerLayer setStrokeEnd:1];
-    }
+    _outerPath = [NSBezierPath bezierPath];
+    [self.outerPath appendBezierPathWithArcWithCenter:[self center]
+                                               radius:[self radius] + self.progressLineWidth/2
+                                           startAngle:0
+                                             endAngle:(2.0 * M_PI - M_PI_2)
+                                            clockwise:YES];
+    self.outerLayer.path = [self.outerPath quartzPath];
+    self.outerLayer.frame = self.bounds;
+    [self.outerLayer setStrokeEnd:1];
 }
 
 # pragma mark - Maths
@@ -146,37 +146,27 @@ static const CGFloat JESDefaultProgressLineWidth = 4;
 }
 
 - (CGFloat)radius {
-    static CGFloat radius;
-    if (!radius) {
-        CGRect progressLineInset = [self progressLineInset];
-        CGFloat width = progressLineInset.size.width;
-        CGFloat height = progressLineInset.size.height;
-        if (width > height) {
-            radius = height / 2.0;
-        } else {
-            radius = width / 2.0;
-        }
+    CGFloat radius;
+    CGRect progressLineInset = [self progressLineInset];
+    CGFloat width = progressLineInset.size.width;
+    CGFloat height = progressLineInset.size.height;
+    if (width > height) {
+        radius = height / 2.0;
+    } else {
+        radius = width / 2.0;
     }
     return floor(radius);
 }
 
 - (CGRect)progressLineInset {
-    static CGRect progressLineInset;
-    if (CGRectIsEmpty(progressLineInset)) {
-        progressLineInset = CGRectIntegral(CGRectInset(self.bounds,
-                                           round(self.progressLineWidth + self.outerLineWidth),
-                                           round(self.progressLineWidth + self.outerLineWidth)));
-    }
-    return progressLineInset;
+    return CGRectIntegral(CGRectInset(self.bounds,
+                          round(self.progressLineWidth/2 + self.outerLineWidth/2),
+                          round(self.progressLineWidth/2 + self.outerLineWidth/2)));
 }
 
 - (CGPoint)center {
-    static CGPoint center;
-    if (CGPointEqualToPoint(CGPointZero, center)) {
-        center = CGPointMake(round(CGRectGetMidX([self progressLineInset])),
-                             round(CGRectGetMidY([self progressLineInset])));
-    }
-    return center;
+    return CGPointMake(round(CGRectGetMidX([self progressLineInset])),
+                       round(CGRectGetMidY([self progressLineInset])));
 }
 
 @end
